@@ -1,11 +1,8 @@
 package image
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
-	"net/http"
-	"net/url"
 	"os"
 	"strconv"
 
@@ -33,47 +30,49 @@ var (
 )
 
 type API struct {
-	apiKey string
+	requester *helpers.HttpRequester
 }
 
 func New(apiKey string) *API {
 	return &API{
-		apiKey: apiKey,
+		requester: helpers.New(apiKey),
 	}
 }
 
-func (a *API) Create(prompt, size string, n int) ([]byte, error) {
-	sizeStr, ok := sizes[size]
-	if !ok {
-		return nil, fmt.Errorf("invalid size input: %s", size)
-	}
-	vals := map[string]interface{}{
-		"prompt":          prompt,
-		"n":               n,
-		"size":            sizeStr,
-		"response_format": "b64_json",
-	}
-
-	jv, err := json.Marshal(vals)
-	if err != nil {
-		return nil, fmt.Errorf("json.Marshal: %v", err)
-	}
-
-	req, err := http.NewRequest("POST", createEndpoint, bytes.NewBuffer(jv))
-	if err != nil {
-		return nil, fmt.Errorf("http.NewRequest: %v", err)
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", a.apiKey))
-
-	return helpers.DalleRequestResponse(req)
+type CreateRequest struct {
+	Prompt         string `json:"prompt"`
+	N              int    `json:"n"`
+	Size           string `json:"size"`
+	ResponseFormat string `json:"response_format"`
 }
 
-func (a *API) Edit(imageUrl, maskUrl, prompt, size string, n int) ([]byte, error) {
-	sizeStr, ok := sizes[size]
+func (a *API) Create(ctx context.Context, req *CreateRequest) ([]byte, error) {
+	if _, ok := sizes[req.Size]; !ok {
+		return nil, fmt.Errorf("invalid size input: %s", req.Size)
+	}
+	return a.requester.SendHttpRequest(ctx, "POST", createEndpoint, "application/json", req)
+}
+
+type EditRequest struct {
+	Prompt         string `json:"prompt"`
+	N              int    `json:"n"`
+	Size           string `json:"size"`
+	ResponseFormat string `json:"response_format"`
+	Image          string `json:"image"`
+	Mask           string `json:"mask"`
+}
+
+func (a *API) Edit(ctx context.Context, req *EditRequest) ([]byte, error) {
+	if _, ok := sizes[req.Size]; !ok {
+		return nil, fmt.Errorf("invalid size input: %s", req.Size)
+	}
+	return a.requester.SendHttpRequest(ctx, "POST", editEndpoint, "application/json", req)
+}
+
+func (a *API) EditWithUrls(ctx context.Context, req *EditRequest, imageUrl, maskUrl string) ([]byte, error) {
+	sizeStr, ok := sizes[req.Size]
 	if !ok {
-		return nil, fmt.Errorf("invalid size input: %s", size)
+		return nil, fmt.Errorf("invalid size input: %s", req.Size)
 	}
 
 	image, err := helpers.DownloadPng(imageUrl)
@@ -92,8 +91,8 @@ func (a *API) Edit(imageUrl, maskUrl, prompt, size string, n int) ([]byte, error
 	}
 
 	fd := map[string]string{
-		"prompt":          prompt,
-		"n":               strconv.Itoa(n),
+		"prompt":          req.Prompt,
+		"n":               strconv.Itoa(req.N),
 		"size":            sizeStr,
 		"response_format": "b64_json",
 		"image":           fmt.Sprintf("@%s", image),
@@ -105,26 +104,17 @@ func (a *API) Edit(imageUrl, maskUrl, prompt, size string, n int) ([]byte, error
 		return nil, fmt.Errorf("helpers.CreateMultipartFormData: %v", err)
 	}
 
-	form := url.Values{}
-	form.Add("prompt", prompt)
-	form.Add("n", strconv.Itoa(n))
-	form.Add("size", sizeStr)
-	form.Add("response_format", "b64_json")
-	form.Add("image", imageUrl)
-	form.Add("mask", maskUrl)
-
-	req, err := http.NewRequest("POST", editEndpoint, body)
-	if err != nil {
-		return nil, fmt.Errorf("http.NewRequest: %v", err)
-	}
-
-	req.Header.Add("Content-Type", ct)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", a.apiKey))
-
-	return helpers.DalleRequestResponse(req)
+	return a.requester.SendHttpRequest(ctx, "POST", editEndpoint, ct, body)
 }
 
-func (a *API) Variation(imageUrl, size string, n int) ([]byte, error) {
+func (a *API) Variation(ctx context.Context, req *EditRequest) ([]byte, error) {
+	if _, ok := sizes[req.Size]; !ok {
+		return nil, fmt.Errorf("invalid size input: %s", req.Size)
+	}
+	return a.requester.SendHttpRequest(ctx, "POST", variationEndpoint, "application/json", req)
+}
+
+func (a *API) VariationWithUrls(ctx context.Context, imageUrl, size string, n int) ([]byte, error) {
 	sizeStr, ok := sizes[size]
 	if !ok {
 		return nil, fmt.Errorf("invalid size input: %s", size)
@@ -152,13 +142,5 @@ func (a *API) Variation(imageUrl, size string, n int) ([]byte, error) {
 		return nil, fmt.Errorf("helpers.CreateMultipartFormData: %v", err)
 	}
 
-	req, err := http.NewRequest("POST", variationEndpoint, body)
-	if err != nil {
-		return nil, fmt.Errorf("http.NewRequest: %v", err)
-	}
-
-	req.Header.Add("Content-Type", ct)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", a.apiKey))
-
-	return helpers.DalleRequestResponse(req)
+	return a.requester.SendHttpRequest(ctx, "POST", variationEndpoint, ct, body)
 }

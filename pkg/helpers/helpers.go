@@ -2,6 +2,8 @@ package helpers
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
 	"image/png"
 	"io"
@@ -12,6 +14,16 @@ import (
 )
 
 const openaiImageFilesizeLimitMb = 4
+
+type HttpRequester struct {
+	apiKey string
+}
+
+func New(apiKey string) *HttpRequester {
+	return &HttpRequester{
+		apiKey: apiKey,
+	}
+}
 
 func CreateMultipartFormData(formData map[string]string) (string, io.Reader, error) {
 	b := new(bytes.Buffer)
@@ -41,8 +53,30 @@ func CreateMultipartFormData(formData map[string]string) (string, io.Reader, err
 	return w.FormDataContentType(), b, nil
 }
 
-func DalleRequestResponse(req *http.Request) ([]byte, error) {
+func (r *HttpRequester) SendHttpRequest(ctx context.Context, method, url, ct string, data any) ([]byte, error) {
+	var buf io.Reader = nil
+	if data != nil {
+		var ok bool
+		buf, ok = data.(io.Reader)
+		if !ok {
+			var b []byte
+			b, err := json.Marshal(data)
+			if err != nil {
+				return nil, fmt.Errorf("json.Marshal: %v", err)
+			}
+			buf = bytes.NewBuffer(b)
+		}
+	}
+
 	client := &http.Client{}
+
+	req, err := http.NewRequestWithContext(ctx, method, url, buf)
+	if err != nil {
+		return nil, fmt.Errorf("http.NewRequestWithContext: %v", err)
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", r.apiKey))
+	req.Header.Set("Content-Type", ct)
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request: %v", err)
