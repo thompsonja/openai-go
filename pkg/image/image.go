@@ -40,26 +40,27 @@ func New(apiKey string) *API {
 }
 
 type CreateRequest struct {
-	Prompt         string `json:"prompt"`
-	N              int    `json:"n"`
-	Size           string `json:"size"`
-	ResponseFormat string `json:"response_format"`
+	Prompt         string `json:"prompt,omitempty"`
+	N              int    `json:"n,omitempty"`
+	Size           string `json:"size,omitempty"`
+	ResponseFormat string `json:"response_format,omitempty"`
 }
 
 func (a *API) Create(ctx context.Context, req *CreateRequest) ([]byte, error) {
 	if _, ok := sizes[req.Size]; !ok {
 		return nil, fmt.Errorf("invalid size input: %s", req.Size)
 	}
+	req.ResponseFormat = "b64_json"
 	return a.requester.SendHttpRequest(ctx, "POST", createEndpoint, "application/json", req)
 }
 
 type EditRequest struct {
-	Prompt         string `json:"prompt"`
-	N              int    `json:"n"`
-	Size           string `json:"size"`
-	ResponseFormat string `json:"response_format"`
-	Image          string `json:"image"`
-	Mask           string `json:"mask"`
+	Prompt         string `json:"prompt,omitempty"`
+	N              int    `json:"n,omitempty"`
+	Size           string `json:"size,omitempty"`
+	ResponseFormat string `json:"response_format,omitempty"`
+	Image          string `json:"image,omitempty"`
+	Mask           string `json:"mask,omitempty"`
 }
 
 func (a *API) Edit(ctx context.Context, req *EditRequest) ([]byte, error) {
