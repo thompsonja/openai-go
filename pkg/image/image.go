@@ -50,6 +50,7 @@ func (a *API) Create(ctx context.Context, req *CreateRequest) ([]byte, error) {
 	if _, ok := sizes[req.Size]; !ok {
 		return nil, fmt.Errorf("invalid size input: %s", req.Size)
 	}
+	req.Size = sizes[req.Size]
 	req.ResponseFormat = "b64_json"
 	return a.requester.SendHttpRequest(ctx, "POST", createEndpoint, "application/json", req)
 }
@@ -67,6 +68,7 @@ func (a *API) Edit(ctx context.Context, req *EditRequest) ([]byte, error) {
 	if _, ok := sizes[req.Size]; !ok {
 		return nil, fmt.Errorf("invalid size input: %s", req.Size)
 	}
+	req.Size = sizes[req.Size]
 	return a.requester.SendHttpRequest(ctx, "POST", editEndpoint, "application/json", req)
 }
 
