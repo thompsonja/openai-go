@@ -40,6 +40,7 @@ func New(apiKey string) *API {
 }
 
 type CreateRequest struct {
+	Model          string `json:"model,omitempty"`
 	Prompt         string `json:"prompt,omitempty"`
 	N              int    `json:"n,omitempty"`
 	Size           string `json:"size,omitempty"`
@@ -51,7 +52,12 @@ func (a *API) Create(ctx context.Context, req *CreateRequest) ([]byte, error) {
 		return nil, fmt.Errorf("invalid size input: %s", req.Size)
 	}
 	req.Size = sizes[req.Size]
-	req.ResponseFormat = "b64_json"
+	if req.Model != "dall-e-2" && req.Model != "dall-e-3" {
+		return nil, fmt.Errorf("invalid model: %s", req.Model)
+	}
+	if req.ResponseFormat == "" {
+		req.ResponseFormat = "b64_json"
+	}
 	return a.requester.SendHttpRequest(ctx, "POST", createEndpoint, "application/json", req)
 }
 
