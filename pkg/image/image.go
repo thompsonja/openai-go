@@ -23,9 +23,12 @@ const (
 
 var (
 	sizes = map[string]string{
-		"small":  "256x256",
-		"medium": "512x512",
-		"large":  "1024x1024",
+		"small":          "256x256",
+		"medium":         "512x512",
+		"large":          "1024x1024",
+		"dalle-3-square": "1024x1024",
+		"dalle-3-wide":   "1792x1024",
+		"dalle-3-large":  "1024x1792",
 	}
 )
 
