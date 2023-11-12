@@ -28,7 +28,7 @@ var (
 		"large":          "1024x1024",
 		"dalle-3-square": "1024x1024",
 		"dalle-3-wide":   "1792x1024",
-		"dalle-3-large":  "1024x1792",
+		"dalle-3-tall":   "1024x1792",
 	}
 )
 
