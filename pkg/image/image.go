@@ -45,6 +45,7 @@ func New(apiKey string) *API {
 type CreateRequest struct {
 	Model          string `json:"model,omitempty"`
 	Prompt         string `json:"prompt,omitempty"`
+	Quality        string `json:"quality,omitempty"`
 	N              int    `json:"n,omitempty"`
 	Size           string `json:"size,omitempty"`
 	ResponseFormat string `json:"response_format,omitempty"`
@@ -57,6 +58,9 @@ func (a *API) Create(ctx context.Context, req *CreateRequest) ([]byte, error) {
 	req.Size = sizes[req.Size]
 	if req.Model != "dall-e-2" && req.Model != "dall-e-3" {
 		return nil, fmt.Errorf("invalid model: %s", req.Model)
+	}
+	if req.Model != "dall-e-3" && req.Quality == "hd" {
+		return nil, fmt.Errorf("hd quality is supported only by dall-e-3")
 	}
 	if req.ResponseFormat == "" {
 		req.ResponseFormat = "b64_json"
